@@ -2,28 +2,24 @@ import React, { Component } from 'react';
 import { Text, View, ScrollView, StyleSheet, Picker, Switch, Button, Modal, Alert } from 'react-native';
 import DatePicker from 'react-native-datepicker';
 import * as Animatable from 'react-native-animatable';
+import * as Notifications from 'expo-notifications';
 
 class Reservation extends Component {
-
     constructor(props) {
         super(props);
-
         this.state = {
             campers: 1,
             hikeIn: false,
-            date: ''
-            //showModal: false
+            date: new Date(),
+            showCalendar: false
         };
     }
-
     static navigationOptions = {
         title: 'Reserve Campsite'
     }
-
     /*toggleModal() {
         this.setState({showModal: !this.state.showModal});
     }*/
-
     handleReservation() {
         console.log(JSON.stringify(this.state));
         //this.toggleModal();
@@ -33,27 +29,59 @@ class Reservation extends Component {
             [
                 {
                     text: 'Cancel',
+                    onPress: () => {
+                        console.log('Reservation Search Canceled')
+                        this.resetForm();
+                    },
                     style: 'cancel',
-                    onPress: () => this.resetForm()
                 },
                 {
                     text: 'OK',
-                    onPress: () => this.resetForm()
+                    //challing notifications
+                    onPress: () => {
+                        this.presentLocalNotification(this.state.date.toLocaleDateString('en-US'));
+                        this.resetForm();
+                    }
                 }
             ],
             { cancelable: false }
         );
     }
-
     resetForm() {
         this.setState({
             campers: 1,
             hikeIn: false,
-            date: ''
-            //showModal: false
+            date: new Date(),
+            showCalendar: false
         });
     }
-
+//handling promises and ask for permitions
+    async presentLocalNotification(date) {
+        function sendNotification() {
+            Notifications.setNotificationHandler({
+                handleNotification: async () => ({
+                    shouldShowAlert: true
+                })
+            });
+            Notifications.scheduleNotificationAsync({
+                content: {
+                    title: 'Your Campsite Reservation Search',
+                    body: `Search for ${date} requested`
+                },
+                trigger: null
+            });
+        }
+//awai only can use inside async function = check if there is permision, when do other methods will be executed.
+        let permissions = await Notifications.getPermissionsAsync();
+        //permision not granted
+        if (!permissions.granted) {
+            permissions = await Notifications.requestPermissionsAsync();
+        }
+        //check if permision was grated.
+        if (permissions.granted) {
+            sendNotification();
+        }
+    }
     render() {
         return(
             <ScrollView>
@@ -114,7 +142,7 @@ class Reservation extends Component {
                             accessibilityLabel='Tap me to search for available campsites to reserve'
                         />
                     </View>
-                    {/* <Modal 
+                    {/* <Modal
                         animationType={'slide'}
                         transparent={false}
                         visible={this.state.showModal}
@@ -139,7 +167,6 @@ class Reservation extends Component {
         );
     }
 }
-
 const styles = StyleSheet.create({
     formRow: {
         alignItems: 'center',
@@ -172,5 +199,4 @@ const styles = StyleSheet.create({
         margin: 10
     }
 });
-
 export default Reservation;
