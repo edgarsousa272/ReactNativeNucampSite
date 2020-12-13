@@ -4,6 +4,7 @@ import { Input, CheckBox, Button, Icon } from 'react-native-elements';
 import * as SecureStore from 'expo-secure-store';
 import * as ImagePicker from 'expo-image-picker';
 import * as Permissions from 'expo-permissions';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { createBottomTabNavigator } from 'react-navigation-tabs';
 import { baseUrl } from '../shared/baseUrl';
 
@@ -49,7 +50,7 @@ class LoginTab extends Component {
     }
 
     componentDidMount() {
-        //check if there any date storeged 
+        //check if there any date stored
         SecureStore.getItemAsync('userinfo')
             .then(userdata => {
                 const userinfo = JSON.parse(userdata);
@@ -165,10 +166,38 @@ class RegisterTab extends Component {
             //if not cancelled, image will be return image captured.
             if (!capturedImage.cancelled) {
                 console.log(capturedImage);
-                this.setState({imageUrl: capturedImage.uri});
+                this.processImage(capturedImage.uri);
             }
         }
     }
+
+    getImageFromGallery = async () => {
+        const cameraRollPermissions = await Permissions.askAsync(Permissions.CAMERA_ROLL);
+
+        //check if camera permission and camera roll were granted, fi so code will be executed.
+        if (cameraRollPermissions.status === 'granted') {
+            const capturedImage = await ImagePicker.launchCameraAsync({
+                allowsEditing: true,
+                aspect: [1, 1]
+            });
+            //if not cancelled, image will be return image captured.
+            if (!capturedImage.cancelled) {
+                console.log(capturedImage);
+                this.processImage(capturedImage.uri);
+            }
+        }
+    }
+
+//Resize a photo and convert it to PNG
+    processImage = async (imgUri) => {
+        const processedImage = await ImageManipulator.manipulateAsync(imgUri,
+            [{ resize: { width: 400 }}], 
+            { compress: 1, format: ImageManipulator.SaveFormat.PNG }
+        );
+        console.log('processedImage=', processedImage);
+        this.setState({imageUrl: processedImage.uri});
+
+    };
 
     handleRegister() {
         console.log(JSON.stringify(this.state));
@@ -196,6 +225,10 @@ class RegisterTab extends Component {
                         <Button
                             title='Camera'
                             onPress={this.getImageFromCamera}
+                        />
+                        <Button
+                            title='Gallery'
+                            onPress={this.getImageFromGallery}
                         />
                     </View>
                     <Input
